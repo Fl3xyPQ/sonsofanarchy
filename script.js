@@ -336,7 +336,6 @@ if (authEnabled) {
       const role = account?.role || inferRoleFromEmail(user.email);
       const name = account?.name || getDisplayNameForRole(role);
       setRole(role, name);
-      if (role === "admin") addAudit("Admin přihlášen (Firebase)");
     } else {
       setRole("");
     }
@@ -440,7 +439,6 @@ const handleRoleLogin = async (event) => {
       const role = account?.role || selectedRole;
       const displayName = account?.name || getDisplayNameForRole(role);
       setRole(role, displayName);
-      if (role === "admin") addAudit("Admin přihlášen (Firebase)");
       hideRoleModal();
       return;
     } catch {
