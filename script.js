@@ -578,6 +578,34 @@ const saveEditsToStorage = () => {
   }
 };
 
+const RESET_ACCOUNTING_FLAG = "soa_reset_accounting_once_v1";
+const resetAccountingData = () => {
+  localStorage.removeItem(EDITS_KEY);
+  localStorage.removeItem(TX_KEY);
+  localStorage.removeItem(AUDIT_KEY);
+  localStorage.removeItem(INVENTORY_KEY);
+  localStorage.setItem(EDITS_KEY, JSON.stringify({}));
+  localStorage.setItem(TX_KEY, JSON.stringify([]));
+  localStorage.setItem(AUDIT_KEY, JSON.stringify([]));
+  localStorage.setItem(INVENTORY_KEY, JSON.stringify([]));
+  if (firebaseEnabled) {
+    firebaseStore.setDocValue(EDITS_KEY, {}).catch(() => {});
+    firebaseStore.setDocValue(TX_KEY, []).catch(() => {});
+    firebaseStore.setDocValue(AUDIT_KEY, []).catch(() => {});
+    firebaseStore.setDocValue(INVENTORY_KEY, []).catch(() => {});
+  }
+  renderAudit();
+  renderRecentTransactions();
+  renderRecentEdits();
+  renderInventory();
+  recalcTotals();
+};
+
+if (!localStorage.getItem(RESET_ACCOUNTING_FLAG)) {
+  resetAccountingData();
+  localStorage.setItem(RESET_ACCOUNTING_FLAG, "done");
+}
+
 loadEdits();
 
 const loadTransactions = () => {
