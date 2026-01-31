@@ -280,7 +280,7 @@ const updateRoleUI = () => {
     if (accountManagementLock) accountManagementLock.hidden = false;
   }
 
-  renderAnnouncementsPublic();
+  setTimeout(() => renderAnnouncementsPublic?.(), 0);
 };
 
 
@@ -290,9 +290,22 @@ loginModal?.addEventListener("click", (event) => {
   if (event.target === loginModal) hideModal();
 });
 
-const handleAdminLogin = (event) => {
+const handleAdminLogin = async (event) => {
   event?.preventDefault();
-  if (adminPassword?.value === ADMIN_PASSWORD) {
+  const password = adminPassword?.value || "";
+  let valid = password === ADMIN_PASSWORD;
+  if (firebaseEnabled) {
+    try {
+      const remote = await firebaseStore.getDocValue(ACCOUNTS_KEY);
+      if (Array.isArray(remote)) {
+        localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(remote));
+        valid = remote.some((account) => account.role === "admin" && account.password === password);
+      }
+    } catch {
+      // fallback to local validation
+    }
+  }
+  if (valid) {
     unlockAccounting();
     setRole("admin");
     addAudit("Admin ověření úspěšné");
@@ -336,12 +349,23 @@ roleModal?.addEventListener("click", (event) => {
   if (event.target === roleModal) hideRoleModal();
 });
 
-const handleRoleLogin = (event) => {
+const handleRoleLogin = async (event) => {
   event?.preventDefault();
   const selectedRole = roleSelect?.value || "member";
   const password = rolePassword?.value || "";
   const isAdmin = selectedRole === "admin";
-  const accounts = getAccounts();
+  let accounts = getAccounts();
+  if (firebaseEnabled) {
+    try {
+      const remote = await firebaseStore.getDocValue(ACCOUNTS_KEY);
+      if (Array.isArray(remote)) {
+        localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(remote));
+        accounts = remote;
+      }
+    } catch {
+      // fallback to local accounts
+    }
+  }
   const matchedAccount = accounts.find(
     (account) => account.role === selectedRole && account.password === password
   );
@@ -1206,7 +1230,7 @@ closeNotice?.addEventListener("click", () => {
   if (topNotice) topNotice.hidden = true;
 });
 
-const getAccounts = () => {
+function getAccounts() {
   const stored = localStorage.getItem(ACCOUNTS_KEY);
   if (!stored) return [];
   try {
@@ -1216,7 +1240,7 @@ const getAccounts = () => {
     localStorage.removeItem(ACCOUNTS_KEY);
     return [];
   }
-};
+}
 
 const saveAccounts = (items) => {
   localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(items));
