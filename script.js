@@ -8,6 +8,9 @@ const firebaseStore = window.firebaseStore;
 const firebaseEnabled = Boolean(firebaseStore?.enabled);
 const firebaseAuth = window.firebaseAuth;
 const authEnabled = Boolean(firebaseAuth?.enabled);
+if (!firebaseEnabled) {
+  console.warn("Firebase Firestore is not initialized. Sync is disabled.");
+}
 const ROLE_EMAILS = {
   admin: "admin@soa.local",
   member: "member@soa.local",
@@ -189,6 +192,7 @@ const showModal = () => {
   loginModal.classList.add("show");
   loginModal.setAttribute("aria-hidden", "false");
   if (loginError) loginError.textContent = "";
+  if (adminEmail) adminEmail.value = "";
   if (adminPassword) adminPassword.value = "";
   adminPassword?.focus();
 };
@@ -253,6 +257,7 @@ const showRoleModal = () => {
   roleModal.classList.add("show");
   roleModal.setAttribute("aria-hidden", "false");
   if (roleError) roleError.textContent = "";
+  if (roleEmail) roleEmail.value = "";
   if (rolePassword) rolePassword.value = "";
   rolePassword?.focus();
 };

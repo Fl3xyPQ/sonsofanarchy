@@ -581,6 +581,8 @@
           <button class="icon-btn" id="closeLogin" type="button" aria-label="Zavřít">×</button>
         </div>
         <form id="loginForm">
+          <label for="adminEmail">E-mail</label>
+          <input id="adminEmail" type="email" autocomplete="username" placeholder="Zadej e-mail" />
           <label for="adminPassword">Heslo</label>
           <input id="adminPassword" type="password" autocomplete="current-password" placeholder="Zadej admin heslo" required />
           <p class="error" id="loginError" role="alert"></p>
@@ -589,9 +591,7 @@
       </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="firebase.js"></script>
-    <script src="script.js"></script>
+    <script type="module" src="firebase.js"></script>
+    <script type="module" src="script.js"></script>
   </body>
 </html>

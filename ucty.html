@@ -82,6 +82,8 @@
               <option value="member">Člen</option>
               <option value="admin">Admin</option>
             </select>
+            <label for="accountEmail">E-mail</label>
+            <input id="accountEmail" type="email" placeholder="např. jax@soa.local" />
             <label for="accountActivity">Aktivita</label>
             <input id="accountActivity" type="text" placeholder="Např. Active / Prospect" />
             <label for="accountPassword">Heslo</label>
@@ -130,6 +132,8 @@
             <option value="member">Člen</option>
             <option value="admin">Admin</option>
           </select>
+          <label for="roleEmail">E-mail</label>
+          <input id="roleEmail" type="email" autocomplete="username" placeholder="Zadej e-mail" />
           <label for="rolePassword">Heslo</label>
           <input id="rolePassword" type="password" autocomplete="current-password" placeholder="Zadej heslo" required />
           <p class="error" id="roleError" role="alert"></p>
@@ -138,9 +142,7 @@
       </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="firebase.js"></script>
-    <script src="script.js"></script>
+    <script type="module" src="firebase.js"></script>
+    <script type="module" src="script.js"></script>
   </body>
 </html>

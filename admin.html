@@ -175,6 +175,8 @@
             <option value="member">Člen</option>
             <option value="admin">Admin</option>
           </select>
+          <label for="roleEmail">E-mail</label>
+          <input id="roleEmail" type="email" autocomplete="username" placeholder="Zadej e-mail" />
           <label for="rolePassword">Heslo</label>
           <input id="rolePassword" type="password" autocomplete="current-password" placeholder="Zadej heslo" required />
           <p class="error" id="roleError" role="alert"></p>
@@ -190,6 +192,8 @@
           <button class="icon-btn" id="closeLogin" type="button" aria-label="Zavřít">×</button>
         </div>
         <form id="loginForm">
+          <label for="adminEmail">E-mail</label>
+          <input id="adminEmail" type="email" autocomplete="username" placeholder="Zadej e-mail" />
           <label for="adminPassword">Heslo</label>
           <input id="adminPassword" type="password" autocomplete="current-password" placeholder="Zadej admin heslo" required />
           <p class="error" id="loginError" role="alert"></p>

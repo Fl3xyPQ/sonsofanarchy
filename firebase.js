@@ -53,22 +53,32 @@ if (hasConfig) {
 
 const getDocValue = async (key) => {
   if (!db) return null;
-  const snapshot = await getDoc(doc(db, "soa_store", key));
-  if (!snapshot.exists()) return null;
-  const data = snapshot.data();
-  return data?.value ?? null;
+  try {
+    const snapshot = await getDoc(doc(db, "soa_store", key));
+    if (!snapshot.exists()) return null;
+    const data = snapshot.data();
+    return data?.value ?? null;
+  } catch (error) {
+    console.warn("Firebase read failed", error);
+    return null;
+  }
 };
 
 const setDocValue = async (key, value) => {
   if (!db) return;
-  await setDoc(
-    doc(db, "soa_store", key),
-    {
-      value,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+  try {
+    await setDoc(
+      doc(db, "soa_store", key),
+      {
+        value,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.warn("Firebase write failed", error);
+    throw error;
+  }
 };
 
 window.firebaseStore = {
