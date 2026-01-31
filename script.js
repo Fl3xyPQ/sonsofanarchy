@@ -6,6 +6,19 @@ const ROLE_NAME_KEY = "soa_role_name";
 const INTRO_RIDE_KEY = "soa_intro_ride_done_v2";
 const firebaseStore = window.firebaseStore;
 const firebaseEnabled = Boolean(firebaseStore?.enabled);
+const firebaseAuth = window.firebaseAuth;
+const authEnabled = Boolean(firebaseAuth?.enabled);
+const ROLE_EMAILS = {
+  admin: "admin@soa.local",
+  member: "member@soa.local",
+};
+const getRoleEmail = (role) => ROLE_EMAILS[role] || ROLE_EMAILS.member;
+const inferRoleFromEmail = (email = "") => {
+  const normalized = email.toLowerCase();
+  if (normalized === ROLE_EMAILS.admin) return "admin";
+  if (normalized === ROLE_EMAILS.member) return "member";
+  return "member";
+};
 
 const loginModal = document.getElementById("loginModal");
 const openLoginButtons = [
@@ -283,6 +296,25 @@ const updateRoleUI = () => {
   setTimeout(() => renderAnnouncementsPublic?.(), 0);
 };
 
+const getDisplayNameForRole = (role) => {
+  const accounts = getAccounts();
+  const match = accounts.find((account) => account.role === role && account.name);
+  if (match?.name) return match.name;
+  return role === "admin" ? "Admin" : "Člen";
+};
+
+if (authEnabled) {
+  firebaseAuth.onAuthStateChanged((user) => {
+    if (user?.email) {
+      const role = inferRoleFromEmail(user.email);
+      setRole(role, getDisplayNameForRole(role));
+      if (role === "admin") addAudit("Admin přihlášen (Firebase)");
+    } else {
+      setRole("");
+    }
+  });
+}
+
 
 openLoginButtons.forEach((btn) => btn.addEventListener("click", showModal));
 closeLogin?.addEventListener("click", hideModal);
@@ -293,6 +325,19 @@ loginModal?.addEventListener("click", (event) => {
 const handleAdminLogin = async (event) => {
   event?.preventDefault();
   const password = adminPassword?.value || "";
+  if (authEnabled) {
+    try {
+      await firebaseAuth.signIn(getRoleEmail("admin"), password);
+      unlockAccounting();
+      setRole("admin", getDisplayNameForRole("admin"));
+      addAudit("Admin ověření úspěšné (Firebase)");
+      hideModal();
+      return;
+    } catch {
+      if (loginError) loginError.textContent = "Nesprávné heslo. Zkus to znovu.";
+      return;
+    }
+  }
   let valid = password === ADMIN_PASSWORD;
   if (firebaseEnabled) {
     try {
@@ -340,6 +385,7 @@ document.addEventListener("click", (event) => {
 logoutButton?.addEventListener("click", () => {
   lockAccounting();
   addAudit("Admin odhlášen");
+  if (authEnabled) firebaseAuth.signOut().catch(() => {});
 });
 
 openRoleLogin?.addEventListener("click", showRoleModal);
@@ -354,6 +400,19 @@ const handleRoleLogin = async (event) => {
   const selectedRole = roleSelect?.value || "member";
   const password = rolePassword?.value || "";
   const isAdmin = selectedRole === "admin";
+  if (authEnabled) {
+    try {
+      await firebaseAuth.signIn(getRoleEmail(selectedRole), password);
+      const displayName = getDisplayNameForRole(selectedRole);
+      setRole(selectedRole, displayName);
+      if (isAdmin) addAudit("Admin přihlášen (Firebase)");
+      hideRoleModal();
+      return;
+    } catch {
+      if (roleError) roleError.textContent = "Nesprávné heslo. Zkus to znovu.";
+      return;
+    }
+  }
   let accounts = getAccounts();
   if (firebaseEnabled) {
     try {
@@ -406,6 +465,7 @@ document.addEventListener("click", (event) => {
 logoutRole?.addEventListener("click", () => {
   setRole("");
   addAudit("Odhlášení role");
+  if (authEnabled) firebaseAuth.signOut().catch(() => {});
 });
 
 if (sessionStorage.getItem(STORAGE_KEY) === "true") {
