@@ -20,6 +20,24 @@ const inferRoleFromEmail = (email = "") => {
   return "member";
 };
 
+const resolveAccountByEmail = async (email) => {
+  if (!email) return null;
+  const normalized = email.toLowerCase();
+  let accounts = getAccounts();
+  if (!accounts.length && firebaseEnabled) {
+    try {
+      const remote = await firebaseStore.getDocValue(ACCOUNTS_KEY);
+      if (Array.isArray(remote)) {
+        localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(remote));
+        accounts = remote;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return accounts.find((account) => (account.email || "").toLowerCase() === normalized) || null;
+};
+
 const loginModal = document.getElementById("loginModal");
 const openLoginButtons = [
   document.getElementById("openLogin"),
@@ -28,6 +46,7 @@ const openLoginButtons = [
 const closeLogin = document.getElementById("closeLogin");
 const loginForm = document.getElementById("loginForm");
 const loginError = document.getElementById("loginError");
+const adminEmail = document.getElementById("adminEmail");
 const adminPassword = document.getElementById("adminPassword");
 const accountingContent = document.getElementById("accountingContent");
 const accountingLock = document.getElementById("accountingLock");
@@ -43,6 +62,7 @@ const openRoleLogin2 = document.getElementById("openRoleLogin2");
 const logoutRole = document.getElementById("logoutRole");
 const roleModal = document.getElementById("roleModal");
 const roleForm = document.getElementById("roleForm");
+const roleEmail = document.getElementById("roleEmail");
 const rolePassword = document.getElementById("rolePassword");
 const roleSelect = document.getElementById("roleSelect");
 const roleError = document.getElementById("roleError");
@@ -142,6 +162,7 @@ const saveBanner = document.getElementById("saveBanner");
 const accountName = document.getElementById("accountName");
 const accountRole = document.getElementById("accountRole");
 const accountActivity = document.getElementById("accountActivity");
+const accountEmail = document.getElementById("accountEmail");
 const accountPassword = document.getElementById("accountPassword");
 const accountNote = document.getElementById("accountNote");
 const createAccount = document.getElementById("createAccount");
@@ -304,10 +325,12 @@ const getDisplayNameForRole = (role) => {
 };
 
 if (authEnabled) {
-  firebaseAuth.onAuthStateChanged((user) => {
+  firebaseAuth.onAuthStateChanged(async (user) => {
     if (user?.email) {
-      const role = inferRoleFromEmail(user.email);
-      setRole(role, getDisplayNameForRole(role));
+      const account = await resolveAccountByEmail(user.email);
+      const role = account?.role || inferRoleFromEmail(user.email);
+      const name = account?.name || getDisplayNameForRole(role);
+      setRole(role, name);
       if (role === "admin") addAudit("Admin přihlášen (Firebase)");
     } else {
       setRole("");
@@ -327,9 +350,13 @@ const handleAdminLogin = async (event) => {
   const password = adminPassword?.value || "";
   if (authEnabled) {
     try {
-      await firebaseAuth.signIn(getRoleEmail("admin"), password);
-      unlockAccounting();
-      setRole("admin", getDisplayNameForRole("admin"));
+      const email = adminEmail?.value?.trim() || getRoleEmail("admin");
+      await firebaseAuth.signIn(email, password);
+      const account = await resolveAccountByEmail(email);
+      const role = account?.role || "admin";
+      const name = account?.name || getDisplayNameForRole(role);
+      if (role === "admin") unlockAccounting();
+      setRole(role, name);
       addAudit("Admin ověření úspěšné (Firebase)");
       hideModal();
       return;
@@ -402,10 +429,13 @@ const handleRoleLogin = async (event) => {
   const isAdmin = selectedRole === "admin";
   if (authEnabled) {
     try {
-      await firebaseAuth.signIn(getRoleEmail(selectedRole), password);
-      const displayName = getDisplayNameForRole(selectedRole);
-      setRole(selectedRole, displayName);
-      if (isAdmin) addAudit("Admin přihlášen (Firebase)");
+      const email = roleEmail?.value?.trim() || getRoleEmail(selectedRole);
+      await firebaseAuth.signIn(email, password);
+      const account = await resolveAccountByEmail(email);
+      const role = account?.role || selectedRole;
+      const displayName = account?.name || getDisplayNameForRole(role);
+      setRole(role, displayName);
+      if (role === "admin") addAudit("Admin přihlášen (Firebase)");
       hideRoleModal();
       return;
     } catch {
@@ -883,7 +913,7 @@ const renderAnnouncementsPublic = () => {
 const renderAnnouncementsAdmin = () => {
   if (!announcementAdminList) return;
   const items = getAnnouncements();
-  announcementAdminList.innerHTML = items.length
+    announcementAdminList.innerHTML = items.length
     ? items
         .map(
           (item, index) => `
@@ -1317,6 +1347,8 @@ const renderAccounts = () => {
               <div class="announcement-admin-item" data-account-index="${index}">
                 <label>Jméno</label>
                 <input type="text" value="${item.name}" data-field="name" />
+                <label>E-mail</label>
+                <input type="email" value="${item.email || ""}" data-field="email" />
                 <label>Role</label>
                 <select data-field="role">
                   <option value="member" ${item.role === "member" ? "selected" : ""}>Člen</option>
@@ -1352,6 +1384,8 @@ const renderAccounts = () => {
                 <div class="account-body">
                   <label>Jméno</label>
                   <input type="text" value="${item.name}" data-field="name" />
+                  <label>E-mail</label>
+                  <input type="email" value="${item.email || ""}" data-field="email" />
                   <label>Role</label>
                   <select data-field="role">
                     <option value="member" ${item.role === "member" ? "selected" : ""}>Člen</option>
@@ -1381,13 +1415,44 @@ createAccount?.addEventListener("click", () => {
   const name = accountName.value.trim();
   const role = accountRole.value;
   const activity = accountActivity?.value.trim() || "Active";
+  const email = accountEmail?.value.trim() || "";
   const password = accountPassword.value.trim();
   const note = accountNote?.value.trim() || "";
   if (!name || !password) return;
+  if (authEnabled && !email) {
+    alert("Zadej e-mail pro Firebase Auth účet.");
+    return;
+  }
   const items = getAccounts();
-  items.unshift({ name, role, activity, password, note });
+  const proceed = async () => {
+    items.unshift({ name, role, activity, email, password, note });
+    saveAccounts(items);
+    accountName.value = "";
+    if (accountEmail) accountEmail.value = "";
+    if (accountActivity) accountActivity.value = "";
+    accountPassword.value = "";
+    if (accountNote) accountNote.value = "";
+    renderAccounts();
+    addAudit("Vytvořen účet");
+  };
+
+  if (authEnabled) {
+    const confirmCreate = window.confirm(
+      "Vytvoření účtu ve Firebase Auth tě dočasně odhlásí. Po vytvoření se znovu přihlas jako admin. Pokračovat?"
+    );
+    if (!confirmCreate) return;
+    firebaseAuth
+      .signUp(email, password)
+      .then(() => firebaseAuth.signOut().catch(() => {}))
+      .then(proceed)
+      .catch(() => alert("Nepodařilo se vytvořit Firebase Auth účet."));
+    return;
+  }
+
+  items.unshift({ name, role, activity, email, password, note });
   saveAccounts(items);
   accountName.value = "";
+  if (accountEmail) accountEmail.value = "";
   if (accountActivity) accountActivity.value = "";
   accountPassword.value = "";
   if (accountNote) accountNote.value = "";
@@ -1400,11 +1465,12 @@ saveAccountsButton?.addEventListener("click", () => {
   if (!source) return;
   const items = Array.from(source.querySelectorAll("[data-account-index]")).map((row) => {
     const name = row.querySelector("[data-field='name']")?.value.trim() || "";
+    const email = row.querySelector("[data-field='email']")?.value.trim() || "";
     const role = row.querySelector("[data-field='role']")?.value || "member";
     const activity = row.querySelector("[data-field='activity']")?.value.trim() || "";
     const password = row.querySelector("[data-field='password']")?.value.trim() || "";
     const note = row.querySelector("[data-field='note']")?.value.trim() || "";
-    return { name, role, activity, password, note };
+    return { name, email, role, activity, password, note };
   });
   saveAccounts(items.filter((item) => item.name || item.password));
   renderAccounts();
